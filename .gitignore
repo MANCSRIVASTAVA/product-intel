@@ -1,0 +1,27 @@
+# Local reference only — never pushed to GitHub
+progress.md
+claude.md*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Env / secrets
+.env
+.env.*
+
+# Data artifacts (raw history lives as local Parquet/DuckDB, not in git)
+*.parquet
+*.duckdb
+data/
+
+# Web
+web/node_modules/
+web/.next/
+web/.vercel/
+
+# OS
+.DS_Store
+.Rhistory
