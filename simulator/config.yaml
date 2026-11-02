@@ -1,0 +1,51 @@
+simulation:
+  start_date: "2026-08-01"
+  days: 90
+  random_seed: 42
+  target_total_users: 30000      # scales to ~1-2M events over 90 days; a config value, not a code change
+  weekend_multiplier: 0.6        # fewer new signups on Sat/Sun
+  daily_noise_std_pct: 0.1       # +/- random noise on each day's new-user count
+
+segments:
+  device: {mobile: 0.6, desktop: 0.35, tablet: 0.05}
+  country: {US: 0.5, GB: 0.2, IN: 0.2, DE: 0.1}
+  channel: {organic: 0.4, paid: 0.3, referral: 0.2, email: 0.1}
+
+funnel:
+  steps: [visit, signup, product_view, add_to_cart, checkout_started, purchase_completed]
+  base_conversion:          # P(reach this step | reached previous step)
+    visit_to_signup: 0.35
+    signup_to_product_view: 0.8
+    product_view_to_add_to_cart: 0.25
+    add_to_cart_to_checkout_started: 0.55
+    checkout_started_to_purchase_completed: 0.7
+
+retention:
+  base_return_prob_day1: 0.4
+  daily_decay_rate: 0.05
+  engagement_boost: 0.1      # extra return probability per prior engagement signal
+
+revenue:
+  order_value_mean: 45
+  order_value_std: 15
+  repeat_purchase_base_rate: 0.2
+
+experiments:
+  - experiment_id: exp_checkout_promo
+    start_date: "2026-09-01"
+    end_date: "2026-10-15"
+    split: [0.5, 0.5]                 # true 50/50 hash-based assignment
+    planted_effect:
+      metric_step: checkout_started_to_purchase_completed
+      variant_B_lift_pp: 3            # absolute lift in percentage points
+  - experiment_id: exp_srm_bug
+    start_date: "2026-09-10"
+    end_date: "2026-10-15"
+    split: [0.5, 0.5]                 # intended split
+    assignment_bug: true              # deliberately skews actual assignment ~65/35
+    planted_effect: null              # no real effect either way; purely an assignment-integrity test
+
+planted_outage:
+  date: "2026-09-20"
+  affected: visit_volume
+  multiplier: 0.5                     # that day's new visits/signups are halved
