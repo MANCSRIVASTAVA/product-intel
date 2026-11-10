@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 
 from pipeline.load import get_engine, load_day
 from simulator.generate import DEFAULT_OUTPUT_DIR
@@ -83,3 +83,36 @@ def test_no_rejected_rows_in_run_log():
         json.loads(line)["rows_rejected"] for line in log_path.read_text().splitlines()
     )
     assert total_rejected == 0
+
+
+def test_result_tables_exist(engine):
+    expected = {
+        "daily_metrics", "funnel_daily", "retention_cohorts",
+        "experiment_results", "churn_scores", "insights",
+    }
+    with engine.connect() as conn:
+        tables = {
+            row[0]
+            for row in conn.execute(
+                text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+            ).fetchall()
+        }
+    assert expected <= tables
+
+
+@pytest.mark.skipif("DATABASE_URL_READONLY" not in os.environ, reason="requires the readonly role")
+def test_readonly_role_can_select_but_not_write():
+    url = os.environ["DATABASE_URL_READONLY"].replace("postgresql://", "postgresql+psycopg2://", 1)
+    readonly_engine = create_engine(url)
+
+    with readonly_engine.connect() as conn:
+        count = conn.execute(text("SELECT count(*) FROM users")).scalar()
+    assert count > 0
+
+    with pytest.raises(Exception, match="permission denied"), readonly_engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO users (user_id, device, country, channel, signup_date) "
+                "VALUES ('test_ro_check', 'x', 'x', 'x', '2026-01-01')"
+            )
+        )

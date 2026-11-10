@@ -37,12 +37,16 @@ def get_engine() -> Engine:
     return create_engine(url)
 
 
+def _has_sql(fragment: str) -> bool:
+    return any(line.strip() and not line.strip().startswith("--") for line in fragment.splitlines())
+
+
 def apply_schema(engine: Engine) -> None:
     sql = SCHEMA_PATH.read_text()
     with engine.begin() as conn:
         for statement in sql.split(";"):
             statement = statement.strip()
-            if statement:
+            if statement and _has_sql(statement):
                 conn.execute(text(statement))
 
 
